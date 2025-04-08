@@ -141,7 +141,7 @@ def game_loop():
         elif not on_ground and jump_count == 1 and keys[pygame.K_SPACE]:
             player_velocity_y = -player_jump_velocity  # Второй прыжок
             jump_count = 2  # Теперь нельзя прыгать снова до касания с землей
-
+#diplom
         # Отображение игрока
         pygame.draw.rect(screen, BLUE, (player_x - camera_x, player_y, player_width, player_height))
 
