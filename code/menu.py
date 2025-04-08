@@ -1,6 +1,7 @@
 import pygame
 import sys
 from PIL import Image, ImageSequence
+import subprocess  # Импортируем модуль subprocess
 
 pygame.init()
 
@@ -9,7 +10,7 @@ screen = pygame.display.set_mode((width, height), pygame.RESIZABLE)
 pygame.display.set_caption("Adventure Quest")
 
 pygame.mixer.init()
-pygame.mixer.music.load("sounds/menu_background.wav")
+pygame.mixer.music.load("resources/sounds/menu_background.wav")
 pygame.mixer.music.set_volume(0.5)
 pygame.mixer.music.play(-1)
 
@@ -22,7 +23,7 @@ clock = pygame.time.Clock()
 
 # Загрузка пиксельного шрифта
 pygame.font.init()
-pixel_font = pygame.font.Font("fonts/alagard-12px-unicode.ttf", 36)  # Укажи путь к пиксельному шрифту
+pixel_font = pygame.font.Font("resources/fonts/alagard-12px-unicode.ttf", 36)  # Укажи путь к пиксельному шрифту
 
 # Загрузка текстуры бумаги
 button_texture = pygame.image.load("textures/menu_button.png")  # Укажи путь к текстуре
@@ -57,6 +58,12 @@ settings_buttons = get_settings_buttons()
 
 in_settings = False
 
+# Функция для запуска story.py
+def start_story():
+    pygame.quit()
+    subprocess.Popen(["python", "./code/story.py"])  # Запускаем story.py
+    sys.exit() 
+
 running = True
 while running:
     mouse_pos = pygame.mouse.get_pos()
@@ -78,7 +85,7 @@ while running:
                     in_settings = False
             else:
                 if buttons["Играть"].collidepoint(mouse_pos):
-                    print("Играть нажато")
+                    start_story()  # Запускаем story.py
                 elif buttons["Настройки"].collidepoint(mouse_pos):
                     in_settings = True
                 elif buttons["Выйти"].collidepoint(mouse_pos):

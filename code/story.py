@@ -8,12 +8,13 @@ from datetime import datetime
 pygame.init()
 width, height = 1280, 720
 screen = pygame.display.set_mode((width, height), pygame.RESIZABLE)
-pygame.display.set_caption("Dynamic Storyteller Ultimate")
+pygame.display.set_caption("Предистория героя")
 clock = pygame.time.Clock()
 
 try:
-    pixel_font = pygame.font.Font("fonts/alagard-12px-unicode.ttf", 24)
-    title_font = pygame.font.Font("fonts/alagard-12px-unicode.ttf", 36)
+    pixel_font = pygame.font.Font("resources/fonts/alagard-12px-unicode.ttf", 24)
+    title_font = pygame.font.Font("resources/fonts/alagard-12px-unicode.ttf", 36)
+    emoji_font = pygame.font.Font("resources/fonts/NotoColorEmoji-Regular.ttf", 24)
 except:
     pygame.quit()
     sys.exit("Ошибка загрузки шрифтов!")
@@ -154,7 +155,7 @@ class DialogueGenerator:
 class WorldMap:
     def generate(self, biome):
         tiles = {
-            "forest": ["🌳", "🌲", "🌿", "🪵"],
+            "forest": ["🌳", "🌲", "🌿", "☘️"],
             "desert": ["🏜️", "🌵", "🦂", "⚱️"],
             "dungeon": ["🧱", "🗝️", "💀", "🕯️"]
         }
@@ -164,7 +165,7 @@ class ArtGallery:
     @staticmethod
     def get_image(biome):
         try:
-            return pygame.image.load(f"images/{biome}_bg.png")
+            return pygame.image.load(f"resources/images/{biome}_bg.png")
         except:
             return pygame.Surface((800, 600))
 
@@ -196,7 +197,7 @@ class GameUI:
         max_width = width - 100 
         
         def draw_text(surface, text, x, y, font_size, max_width):
-            font = pygame.font.Font("fonts/alagard-12px-unicode.ttf", font_size)
+            font = pygame.font.Font("resources/fonts/alagard-12px-unicode.ttf", font_size)
             words = text.split()
             lines = []
             current_line = ""

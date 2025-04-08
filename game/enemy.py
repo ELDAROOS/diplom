@@ -6,6 +6,8 @@ class Enemy(pygame.sprite.Sprite):
         super().__init__()
         self.image = pygame.Surface((50, 50))
         self.image.fill((0, 0, 255))
+        self.image.set_colorkey((0, 0, 255))
+        # Загрузка текстуры врага
         self.rect = self.image.get_rect(center=(x, y))
         self.speed = random.randint(1, 3)
 
