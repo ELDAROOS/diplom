@@ -14,7 +14,7 @@ pygame.mixer.music.load("resources/sounds/menu_background.wav")
 pygame.mixer.music.set_volume(0.5)
 pygame.mixer.music.play(-1)
 
-gif = Image.open("textures/menu_background.gif")
+gif = Image.open("resources/images/menu_background.gif")
 frames = [pygame.image.fromstring(frame.convert("RGBA").tobytes(), frame.size, "RGBA") for frame in ImageSequence.Iterator(gif)]
 
 frame_index = 0
@@ -26,7 +26,7 @@ pygame.font.init()
 pixel_font = pygame.font.Font("resources/fonts/alagard-12px-unicode.ttf", 36)  # Укажи путь к пиксельному шрифту
 
 # Загрузка текстуры бумаги
-button_texture = pygame.image.load("textures/menu_button.png")  # Укажи путь к текстуре
+button_texture = pygame.image.load("resources/images/menu_button.png")  # Укажи путь к текстуре
 
 dark_button_texture = pygame.Surface((200, 50), pygame.SRCALPHA)
 dark_button_texture.blit(button_texture, (0, 0))
