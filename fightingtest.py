@@ -13,16 +13,27 @@ pygame.display.set_caption('Fighting Game')
 # Цвета
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
+RED = (255, 0, 0)
+GREEN = (0, 255, 0)
 
 # Загрузка кадров для анимации
 def load_frames(file_paths):
-    return [pygame.image.load(path) for path in file_paths]
+    frames = []
+    for file_name in file_paths:
+        try:
+            img = pygame.image.load(file_name)
+            frames.append(img)
+        except pygame.error as e:
+            print(f"Ошибка загрузки изображения {file_name}: {e}")
+    return frames
 
 # Классы для персонажей
 class Character(pygame.sprite.Sprite):
-    def __init__(self, x, y, name, idle_frames, walk_frames, jump_frames, attack_frames, is_player=True):
+    def __init__(self, x, y, name, idle_frames, walk_frames, jump_frames, attack_frames, health=100, is_player=True):
         super().__init__()
         self.name = name
+        self.health = health
+        self.max_health = health
         self.is_jumping = False
         self.is_attacking = False
         self.is_player = is_player
@@ -42,8 +53,6 @@ class Character(pygame.sprite.Sprite):
         self.walk_frames = [pygame.transform.scale(img, (img.get_width() * self.scale_factor, img.get_height() * self.scale_factor)) for img in walk_frames]
         self.jump_frames = [pygame.transform.scale(img, (img.get_width() * self.scale_factor, img.get_height() * self.scale_factor)) for img in jump_frames]
         self.attack_frames = [pygame.transform.scale(img, (img.get_width() * self.scale_factor, img.get_height() * self.scale_factor)) for img in attack_frames]
-
-        self.facing_right = True  # Флаг для отслеживания направления взгляда
 
         self.frames = {
             "idle": self.idle_frames,
@@ -105,8 +114,12 @@ class Character(pygame.sprite.Sprite):
                 self.set_animation("idle")
 
     def robot_ai(self):
-        # Получаем игрока (предположим, что он всегда char1)
-        player = char1
+    # Получаем игрока (предположим, что он всегда char1)
+        try:
+            player = char1
+        except NameError:
+            print("Ошибка: char1 не определен!")
+            return
 
         # Расстояние до игрока
         dx = player.rect.x - self.rect.x
@@ -118,6 +131,7 @@ class Character(pygame.sprite.Sprite):
         # Простой порог для атаки (когда касается)
         attack_range = 50
 
+        # Проверка на атаку
         if distance_x < attack_range and distance_y < 100:
             self.set_animation("attack")
             self.is_attacking = True
@@ -137,8 +151,7 @@ class Character(pygame.sprite.Sprite):
             # Простая логика прыжка, если игрок выше
             if dy < -50 and not self.is_jumping:
                 self.is_jumping = True
-                self.vel_y = self.jump_speed
-
+                self.vel_y = self.jump_speed  # Обновление вертикальной скорости для прыжка
 
     def flip_character(self):
         # Переворачиваем персонажа
@@ -165,17 +178,32 @@ class Character(pygame.sprite.Sprite):
             self.animation_frame = 0
         self.image = self.frames["current"][int(self.animation_frame)]
 
-# Создание персонажей
-player_idle = load_frames(['1.png', '2.png'])
-player_walk = load_frames(['3.png', '4.png', '5.png', '9.png', '10.png', '11.png', '12.png', '13.png'])
-player_jump = load_frames(['6.png'])
-player_attack = load_frames(['7.png', '8.png'])
-char1 = Character(100, HEIGHT - 100, 'Player1', player_idle, player_walk, player_jump, player_attack, is_player=True)
+    def take_damage(self, damage):
+        self.health -= damage
+        if self.health < 0:
+            self.health = 0
 
-robot_idle = load_frames(['1.png', '2.png'])
-robot_walk = load_frames(['3.png', '4.png', '5.png', '9.png', '10.png', '11.png', '12.png', '13.png'])
-robot_jump = load_frames(['6.png'])
-robot_attack = load_frames(['7.png', '8.png'])
+    def display_health(self, screen):
+        # Отображение полосы здоровья
+        health_bar_width = 200
+        health_bar_height = 20
+        health_percentage = self.health / self.max_health
+        pygame.draw.rect(screen, RED, (self.rect.x, self.rect.y - 30, health_bar_width, health_bar_height))
+        pygame.draw.rect(screen, GREEN, (self.rect.x, self.rect.y - 30, health_bar_width * health_percentage, health_bar_height))
+
+# Загрузка анимаций
+player_idle = load_frames(['images/player_idle_1.png', 'images/player_idle_2.png'])
+player_walk = load_frames(['images/player_walk_1.png', 'images/player_walk_2.png', 'images/player_walk_3.png', 'images/player_walk_4.png', 'images/player_walk_5.png', 'images/player_walk_6.png', 'images/player_walk_7.png', 'images/player_walk_8.png'])
+player_jump = load_frames(['images/player_jump_1.png'])
+player_attack = load_frames(['images/player_attack_1.png', 'images/player_attack_2.png'])
+
+robot_idle = load_frames(['images/player_idle_1.png', 'images/player_idle_2.png'])
+robot_walk = load_frames(['images/player_walk_1.png', 'images/player_walk_2.png', 'images/player_walk_3.png', 'images/player_walk_4.png', 'images/player_walk_5.png', 'images/player_walk_6.png', 'images/player_walk_7.png', 'images/player_walk_8.png'])
+robot_jump = load_frames(['images/player_jump_1.png'])
+robot_attack = load_frames(['images/player_attack_1.png', 'images/player_attack_2.png'])
+
+# Создание персонажей
+char1 = Character(100, HEIGHT - 100, 'Player1', player_idle, player_walk, player_jump, player_attack, is_player=True)
 char2 = Character(600, HEIGHT - 100, 'Robot', robot_idle, robot_walk, robot_jump, robot_attack, is_player=False)
 
 # Группа персонажей
@@ -186,7 +214,7 @@ all_sprites.add(char1, char2)
 clock = pygame.time.Clock()
 while True:
     screen.fill(WHITE)
-    
+
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             pygame.quit()
@@ -196,7 +224,12 @@ while True:
     char1.update(keys)  # Управление игроком
     char2.update(keys)  # Поведение робота
 
+    # Отображаем полосы здоровья
+    char1.display_health(screen)
+    char2.display_health(screen)
+
+    # Отображаем все спрайты
     all_sprites.draw(screen)
-    
+
     pygame.display.flip()
     clock.tick(60)
