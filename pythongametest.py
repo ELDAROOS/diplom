@@ -28,7 +28,7 @@ player_jump_velocity = 10
 gravity = 1
 player_velocity_y = 0
 on_ground = False
-jump_height = 150  # Максимальная высота прыжка
+jump_height = 300  # Максимальная высота прыжка
 level_length = 5000  # Длина уровня (в пикселях)
 max_platform_height = 400  # Ограничение по максимальной высоте платформы
 
