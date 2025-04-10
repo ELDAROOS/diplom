@@ -5,8 +5,8 @@ import subprocess  # Импортируем модуль subprocess
 
 pygame.init()
 
-width, height = 800, 400
-screen = pygame.display.set_mode((width, height), pygame.RESIZABLE)
+width, height = 1920, 1080
+screen = pygame.display.set_mode((width, height), pygame.FULLSCREEN)
 pygame.display.set_caption("Adventure Quest")
 
 pygame.mixer.init()
