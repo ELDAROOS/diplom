@@ -166,123 +166,58 @@ class Character(pygame.sprite.Sprite):
         moving = False
         self.is_blocking = False
 
-        if not hasattr(self, 'ai_state'):
-            self.ai_state = "CHASING"
-            self.state_timer = 0
-            self.state_duration = 0
-            self.is_attacking_phase = False
-            self.attack_start_time = 0
-
-        self.state_timer += 1 / 60
-
-        attack_animation_length = len(self.animations["attack"]) / self.anim_speed
-
-        if self.ai_state == "CHASING":
-            self.is_attacking_phase = False
-            if distance <= 80 and self.attack_cooldown <= 0:
-                self.ai_state = "ATTACKING"
-                self.state_timer = 0
-                self.is_attacking_phase = True
-                self.attack_start_time = pygame.time.get_ticks()
-            elif random.random() < 0.005: # Уменьшаем вероятность Fleeing
-                self.ai_state = "FLEEING"
-                self.state_timer = 0
-                self.state_duration = random.uniform(0.3, 1.0) # Уменьшаем макс. длительность Fleeing
-            elif random.random() < 0.01 and distance < 100 and (player.is_attacking or player.is_heavy_attacking):
-                self.ai_state = "BLOCKING"
-                self.state_timer = 0
-                self.state_duration = random.uniform(0.2, 0.5) # Уменьшаем макс. длительность Blocking
-            else:
-                self.move_left = distance_x > 5
-                self.move_right = distance_x < -5
-                moving = True
-
-        elif self.ai_state == "ATTACKING":
-            current_attack_time = (pygame.time.get_ticks() - self.attack_start_time) / 1000.0
-            if self.is_attacking_phase and current_attack_time < attack_animation_length:
-                if self.attack_cooldown <= 0:
-                    attack_type = random.randint(0, 10)
-                    if self.energy >= self.max_energy and attack_type >= 8:
-                        self.is_super_attacking = True
-                        self.attack_cooldown = 40
-                    elif attack_type >= 4:
-                        self.is_heavy_attacking = True
-                        self.attack_cooldown = 30
-                    else:
-                        self.is_attacking = True
-                        self.attack_cooldown = 10
-            else:
-                self.ai_state = "CHASING"
-                self.state_timer = 0
-                self.is_attacking_phase = False
-
-        elif self.ai_state == "FLEEING":
-            self.is_attacking_phase = False
-            self.move_left = distance_x < 0
-            self.move_right = distance_x > 0
-            moving = True
-            if self.state_timer >= self.state_duration:
-                self.ai_state = "CHASING" # После Fleeing сразу в Chasing
-                self.state_timer = 0
-
-        elif self.ai_state == "BLOCKING":
-            self.is_attacking_phase = False
+        # Блок с небольшой вероятностью, если игрок рядом
+        if distance < 100 and random.random() < 0.02:
             self.is_blocking = True
-            if self.state_timer >= self.state_duration or distance > 150:
-                self.ai_state = "CHASING" # После Blocking сразу в Chasing
-                self.state_timer = 0
+            self.set_action("idle")
+            return
 
-        elif self.ai_state == "IDLE": # Состояние IDLE больше не используется явно после Fleeing
-            self.ai_state = "CHASING"
-            self.state_timer = 0
-
-        elif self.ai_state == "JUMPING":
-            self.is_attacking_phase = False
-            if self.is_jumping and self.rect.bottom >= GROUND_LEVEL:
-                self.ai_state = "CHASING"
-                self.state_timer = 0
-
-        # Применение движений
-        if getattr(self, 'move_left', False):
+        # Движение к игроку
+        if distance_x > 5:
             self.rect.x -= self.speed
             self.facing_right = False
             moving = True
-        if getattr(self, 'move_right', False):
+        elif distance_x < -5:
             self.rect.x += self.speed
             self.facing_right = True
             moving = True
 
-        # Прыжок с небольшой вероятностью
-        if self.ai_state != "JUMPING" and 70 < distance < 150 and distance_y > 30 and not self.is_jumping and random.random() < 0.015:
+        # Прыжок с небольшой вероятностью, если игрок выше
+        if distance < 150 and distance_y > 30 and not self.is_jumping and random.random() < 0.01:
             try:
                 jump_sound.play()
             except:
                 pass
             self.is_jumping = True
             self.vel_y = self.jump_speed
-            self.ai_state = "JUMPING"
 
-        # Анимация
-        if self.is_attacking or self.is_heavy_attacking or self.is_super_attacking:
-            self.set_action("attack")
-        elif self.is_jumping:
-            self.set_action("jump")
-        elif self.is_blocking:
+        # Атака, если достаточно близко и нет кулдауна
+        if distance < 70 and self.attack_cooldown <= 0:
+            attack_type = random.randint(0, 10)
+            if self.energy >= self.max_energy and attack_type == 10:
+                self.is_super_attacking = True
+                self.set_action("attack")
+                self.attack_cooldown = 40
+            elif attack_type > 6:
+                self.is_heavy_attacking = True
+                self.set_action("attack")
+                self.attack_cooldown = 30
+            else:
+                self.is_attacking = True
+                self.set_action("attack")
+                self.attack_cooldown = 10
+        elif self.attack_cooldown > 5 and not self.is_attacking and not self.is_heavy_attacking and not self.is_super_attacking:
+            # После атаки небольшая пауза
             self.set_action("idle")
-        elif moving:
-            self.set_action("walk")
-        else:
-            self.set_action("idle")
-
-        # Обнуление временных переменных движения
-        self.move_left = False
-        self.move_right = False
-        self.is_attacking = False
-        self.is_heavy_attacking = False
-        self.is_super_attacking = False
-        # self.is_blocking остается установленным на время действия блока
-
-       
+        elif not self.is_attacking and not self.is_heavy_attacking and not self.is_super_attacking:
+            # Если не атакует и не двигается, стоит на месте
+            if moving:
+                self.set_action("walk")
+            else:
+                self.set_action("idle")
+            self.is_attacking = False
+            self.is_heavy_attacking = False
+            self.is_super_attacking = False
 
     def apply_gravity(self):
         if self.is_jumping:
