@@ -1,9 +1,11 @@
 import pygame
 import sys
-import math  # Добавляем для вычисления расстояния
+import math
+import random
 
 # Инициализация
 pygame.init()
+pygame.mixer.init()  # Для звуков
 clock = pygame.time.Clock()
 
 # Экран
@@ -25,8 +27,20 @@ ANIMATIONS = {
     "idle": [f'player_idle_{i}.png' for i in range(1, 10)],
     "walk": [f'player_walk_{i}.png' for i in range(1, 11)],
     "jump": [f'player_jump_{i}.png' for i in range(1, 3)],
-    "attack": [f'player_attack_{i}.png' for i in range(1, 10)],
+    "attack": [f'player_attack_{i}.png' for i in range(1, 5)],
+    "hard_attack": [f'player_attack_{i}.png' for i in range(6, 10)],
+    "super_attack": [f'player_attack_{i}.png' for i in range(1, 5)],
+    "crouch": [f'player_crouch.png' for i in range(1)],
 }
+
+# Звуки
+try:
+    hit_sound = pygame.mixer.Sound('resources/sounds/hit.wav')
+    jump_sound = pygame.mixer.Sound('resources/sounds/jump.wav')
+    pygame.mixer.music.load('resources/sounds/background.mp3')
+    pygame.mixer.music.play(-1)  # Зациклить фоновую музыку
+except pygame.error as e:
+    print(f"Ошибка загрузки звуков: {e}")
 
 def load_animation(folder, file_list, scale=3):
     frames = []
@@ -48,10 +62,18 @@ class Character(pygame.sprite.Sprite):
         self.speed = 5
         self.jump_speed = -15
         self.gravity = 0.8
-        self.health = self.max_health = 500
+        self.health = self.max_health = 300
+        self.energy = 0
+        self.max_energy = 100
         self.vel_y = 0
         self.is_jumping = False
         self.is_attacking = False
+        self.is_heavy_attacking = False
+        self.is_super_attacking = False
+        self.is_blocking = False
+        self.attack_cooldown = 0
+        self.combo_count = 0
+        self.combo_timer = 0
         self.facing_right = is_player_one
         self.anim_frame = 0
         self.anim_speed = 0.2
@@ -62,54 +84,106 @@ class Character(pygame.sprite.Sprite):
         }
         self.image = self.animations["idle"][0]
         self.rect = self.image.get_rect(topleft=(x, ground_y - self.image.get_height()))
-        self.attack_rect = pygame.Rect(0, 0, 0, 0)  # Оставим, но не используем для урона
 
     def update(self, keys, opponent):
         self.player_control(keys)
         self.apply_gravity()
         self.animate()
         
-        if self.is_attacking:
+        if self.is_attacking or self.is_heavy_attacking or self.is_super_attacking:
             self.check_attack(opponent)
+        
+        if self.attack_cooldown > 0:
+            self.attack_cooldown -= 1
+        if self.combo_timer > 0:
+            self.combo_timer -= 1
+        else:
+            self.combo_count = 0
 
     def player_control(self, keys):
         moving = False
+        self.is_blocking = False
+
         if self.is_player_one:
-            if keys[pygame.K_a]:
+            # Движение с ограничением границ
+            if keys[pygame.K_a] and self.rect.x > 0:
                 self.rect.x -= self.speed
                 self.facing_right = False
                 moving = True
-            if keys[pygame.K_d]:
+            if keys[pygame.K_d] and self.rect.x < WIDTH - self.rect.width:
                 self.rect.x += self.speed
                 self.facing_right = True
                 moving = True
+            # Прыжок
             if keys[pygame.K_w] and not self.is_jumping:
+                try:
+                    jump_sound.play()
+                except:
+                    pass
                 self.is_jumping = True
                 self.vel_y = self.jump_speed
-            if keys[pygame.K_e] and not self.is_attacking:
+            # Легкая атака
+            if keys[pygame.K_e] and not self.is_attacking and self.attack_cooldown <= 0:
                 self.is_attacking = True
                 self.set_action("attack")
+                self.attack_cooldown = 10  # 0.17 сек
             elif not keys[pygame.K_e]:
                 self.is_attacking = False
+            # Тяжелая атака
+            if keys[pygame.K_q] and not self.is_heavy_attacking and self.attack_cooldown <= 0:
+                self.is_heavy_attacking = True
+                self.set_action("attack")
+                self.attack_cooldown = 30  # 0.5 сек
+            elif not keys[pygame.K_q]:
+                self.is_heavy_attacking = False
+            # Супер-атака
+            if keys[pygame.K_f] and not self.is_super_attacking and self.energy >= self.max_energy and self.attack_cooldown <= 0:
+                self.is_super_attacking = True
+                self.set_action("attack")
+                self.attack_cooldown = 40  # 0.67 сек
+            elif not keys[pygame.K_f]:
+                self.is_super_attacking = False
+            # Блок
+            self.is_blocking = keys[pygame.K_s]
         else:
-            if keys[pygame.K_LEFT]:
+            # Движение второго игрока
+            if keys[pygame.K_LEFT] and self.rect.x > 0:
                 self.rect.x -= self.speed
                 self.facing_right = False
                 moving = True
-            if keys[pygame.K_RIGHT]:
+            if keys[pygame.K_RIGHT] and self.rect.x < WIDTH - self.rect.width:
                 self.rect.x += self.speed
                 self.facing_right = True
                 moving = True
             if keys[pygame.K_UP] and not self.is_jumping:
+                try:
+                    jump_sound.play()
+                except:
+                    pass
                 self.is_jumping = True
                 self.vel_y = self.jump_speed
-            if keys[pygame.K_m] and not self.is_attacking:
+            if keys[pygame.K_m] and not self.is_attacking and self.attack_cooldown <= 0:
                 self.is_attacking = True
                 self.set_action("attack")
+                self.attack_cooldown = 10
             elif not keys[pygame.K_m]:
                 self.is_attacking = False
+            if keys[pygame.K_n] and not self.is_heavy_attacking and self.attack_cooldown <= 0:
+                self.is_heavy_attacking = True
+                self.set_action("attack")
+                self.attack_cooldown = 30
+            elif not keys[pygame.K_n]:
+                self.is_heavy_attacking = False
+            if keys[pygame.K_k] and not self.is_super_attacking and self.energy >= self.max_energy and self.attack_cooldown <= 0:
+                self.is_super_attacking = True
+                self.set_action("attack")
+                self.attack_cooldown = 40
+            elif not keys[pygame.K_k]:
+                self.is_super_attacking = False
+            self.is_blocking = keys[pygame.K_DOWN]
 
-        if self.is_attacking:
+        # Логика анимаций
+        if self.is_attacking or self.is_heavy_attacking or self.is_super_attacking:
             self.set_action("attack")
         elif self.is_jumping:
             self.set_action("jump")
@@ -146,28 +220,56 @@ class Character(pygame.sprite.Sprite):
     def draw_health(self, surface, x_offset):
         bar_width = 200
         health_ratio = self.health / self.max_health
+        energy_ratio = self.energy / self.max_energy
         health_bar_x = x_offset
         health_bar_y = 20
+        # Подпись игрока
+        font = pygame.font.Font(None, 36)
+        label = "Player 1" if self.is_player_one else "Player 2"
+        text = font.render(label, True, WHITE)
+        surface.blit(text, (health_bar_x, health_bar_y - 25))
+        # Бар здоровья
         pygame.draw.rect(surface, RED, (health_bar_x, health_bar_y, bar_width, 15))
         pygame.draw.rect(surface, GREEN, (health_bar_x, health_bar_y, bar_width * health_ratio, 15))
+        # Бар энергии (ниже здоровья)
+        pygame.draw.rect(surface, WHITE, (health_bar_x, health_bar_y + 20, bar_width, 10))
+        pygame.draw.rect(surface, (0, 0, 255), (health_bar_x, health_bar_y + 20, bar_width * energy_ratio, 10))
 
     def check_attack(self, opponent):
-        # Вычисляем расстояние между центрами текстур
         dx = self.rect.centerx - opponent.rect.centerx
         dy = self.rect.centery - opponent.rect.centery
         distance = math.sqrt(dx**2 + dy**2)
-        
-        # Радиус попадания (50 пикселей)
-        hit_radius = 50
-        
-        # Если расстояние меньше радиуса и игрок атакует, наносим урон
-        if distance < hit_radius:
-            opponent.take_damage(5)
+        if distance < 50:
+            try:
+                hit_sound.play()
+            except:
+                pass
+            # Определяем урон
+            if self.is_super_attacking:
+                damage = 20
+                self.energy = 0
+            elif self.is_heavy_attacking:
+                damage = 10
+            else:
+                damage = 5 + self.combo_count  # Комбо: 5, 6, 7...
+                self.combo_count += 1
+                self.combo_timer = 30
+            opponent.take_damage(damage)
+            # Добавляем энергию за удар
+            self.energy += 5
+            if self.energy > self.max_energy:
+                self.energy = self.max_energy
 
     def take_damage(self, damage):
+        if self.is_blocking:
+            damage //= 2  # Блок уменьшает урон вдвое
         self.health -= damage
         if self.health < 0:
             self.health = 0
+        # Энергия за получение урона
+        self.energy += 10
+        if self.energy > self.max_energy:
+            self.energy = self.max_energy
 
 # Игровой цикл
 def game_loop():
@@ -177,6 +279,9 @@ def game_loop():
     all_sprites = pygame.sprite.Group()
     all_sprites.add(player1, player2)
 
+    game_over = False
+    winner_text = None
+
     while True:
         screen.fill(GRAY)
 
@@ -184,15 +289,32 @@ def game_loop():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
+            if event.type == pygame.KEYDOWN and game_over:
+                if event.key == pygame.K_r:  # Рестарт
+                    return game_loop()  # Перезапускаем игру
 
         keys = pygame.key.get_pressed()
 
-        player1.update(keys, player2)
-        player2.update(keys, player1)
+        if not game_over:
+            player1.update(keys, player2)
+            player2.update(keys, player1)
+
+            # Проверка победы
+            if player1.health <= 0 or player2.health <= 0:
+                game_over = True
+                winner = "Player 2 Wins!" if player1.health <= 0 else "Player 1 Wins!"
+                font = pygame.font.Font(None, 74)
+                winner_text = font.render(winner, True, WHITE)
 
         all_sprites.draw(screen)
         player1.draw_health(screen, 20)
-        player2.draw_health(screen, WIDTH - 600)  # Твоя настройка HUD-бара
+        player2.draw_health(screen, WIDTH - 600)
+
+        if game_over and winner_text:
+            screen.blit(winner_text, (WIDTH // 2 - winner_text.get_width() // 2, HEIGHT // 2))
+            font = pygame.font.Font(None, 36)
+            restart_text = font.render("Press R to Restart", True, WHITE)
+            screen.blit(restart_text, (WIDTH // 2 - restart_text.get_width() // 2, HEIGHT // 2 + 50))
 
         pygame.display.flip()
         clock.tick(60)
